@@ -1,16 +1,10 @@
 class PrototypesController < ApplicationController
-  # before_action :configure_sign_up_params, only: [:create]
-  before_action :authenticate_user!, only: [:new, :edit, :destroy, :update]
-  before_action :move_to_index, only: [:edit, :update]
-  
-  
-  def was_attached?
-    self.prototype.attached?
-  end
-  
+  before_action :set_prototype, except: [:index, :new, :create]
+  before_action :authenticate_user!, except: [:index, :show]
+  before_action :contributor_confirmation, only: [:edit, :update, :destroy]
+
   def index
     @prototypes = Prototype.includes(:user)
-   
   end
 
   def new
@@ -18,63 +12,49 @@ class PrototypesController < ApplicationController
   end
 
   def create
-   
     @prototype = Prototype.new(prototype_params)
     if @prototype.save
       redirect_to root_path
     else
-      render new_prototype_path
+      render :new, status: :unprocessable_entity
+    end
+  end
+
+  def show
+    @comment = Comment.new
+    @comments = @prototype.comments
+  end
+
+  def edit
+  end
+
+  def update
+    if @prototype.update(prototype_params)
+      redirect_to prototype_path(@prototype)
+    else
+      render :edit, status: :unprocessable_entity
     end
   end
 
   def destroy
-    prototype = Prototype.find(prototype_params)
     if @prototype.destroy
+      redirect_to root_path
+    else
       redirect_to root_path
     end
   end
 
-  def edit
-    @prototype = Prototype.find(params[:id])
-    unless @prototype.user_id == current_user.id
-      redirect_to action: :index
-    end
-    end
-  
-
-  def update
-    @prototype = Prototype.find(params[:id])
-    if @prototype.update(prototype_params)
-      redirect_to prototype_path(@prototype.id)
-    else
-      render :edit
-    end
-
-  end
-
-  def show
-    @prototype = Prototype.find(params[:id])
-    @comment = Comment.new
-    @comments = @prototype.comments.includes(:user)
-  end
-
   private
+
   def prototype_params
     params.require(:prototype).permit(:title, :catch_copy, :concept, :image).merge(user_id: current_user.id)
   end
 
-  def set_prototypes
-    @prototype = Prototypes.find(params[:id])
-  end
-
-  def move_to_index
+  def set_prototype
     @prototype = Prototype.find(params[:id])
-    unless user_signed_in? && current_user.id == @prototype.user_id
-      redirect_to action: :index
-    end
-
-    def comment_params
-      params.require(:comment).permit(:content)
   end
+
+  def contributor_confirmation
+    redirect_to root_path unless current_user == @prototype.user
   end
 end
